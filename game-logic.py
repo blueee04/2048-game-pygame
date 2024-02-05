@@ -37,11 +37,11 @@ def fill2_4(board):
     while(board[a][b] != 0):
         a = random.randint(0,3)
         b = random.randint(0,3)
-    return board
     if sum([i for row in board for i in row]) in (0,2):
         board[a][b] = 2
     else:
         board[a][b] = random.choice([2,4])
+    return board
 
 def move_left(board):
     for i in range(4):
@@ -59,3 +59,22 @@ def merge(row):
             row[i] *= 2
             row[i+1] = 0
     return row
+
+def transpose(board):
+    return [list(row) for row in zip(*board)]
+
+def move_up(board):
+    board = transpose(board)
+    board = move_left(board)
+    return transpose(board)
+
+def move_down(board):
+    board = transpose(board)
+    board = move_right(board)
+    return transpose(board)
+
+def move_right(board):
+    board = [row[::-1] for row in board]
+    board = move_left(board)
+    return [row[::-1] for row in board]
+
