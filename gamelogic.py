@@ -1,80 +1,217 @@
 import random
 
-def move(dir,board):
-    if(dir == "w"):
-        return move_up(board)
-    if(dir == "s"):
-        return move_down(board)
-    if(dir == "a"):
-        return move_left(board)
-    if(dir == "d"):
-        return move_right(board)
-    
-def Check_Status(board,max = 4096):
-    for i in range(4):
-        for j in range(4):
-            if(board[i][j] == max):
-                return "win"
-    for i in range(4):
-        for j in range(4):
-            if(board[i][j] == 0):
-                return "KEEP PLAYING"
-    for i in range(3):
-        for j in range(3):
-            if(board[i][j] == board[i+1][j] or board[i][j] == board[i][j+1]):
-                return "KEEP PLAYING"
-    for i in range(3):
-        if(board[i][3] == board[i+1][3]):
-            return "KEEP PLAYING"
-    for j in range(3):
-        if(board[3][j] == board[3][j+1]):
-            return "KEEP PLAYING"
-    return "YOU LOST"
 
-def fill2_4(board):
-    a = random.randint(0,3)
-    b = random.randint(0,3)
-    while(board[a][b] != 0):
-        a = random.randint(0,3)
-        b = random.randint(0,3)
-    if sum([i for row in board for i in row]) in (0,2):
-        board[a][b] = 2
+def move(direction, board):
+    """
+    Call functions to move & merge in the specified direction.
+
+    Parameters:
+        direction (str): direction in which to move the tiles
+        board (list): game board
+    Returns:
+        (list): updated board after move completion
+    """
+    if direction == "w":
+        return moveUp(board)
+    if direction == "s":
+        return moveDown(board)
+    if direction == "a":
+        return moveLeft(board)
+    if direction == "d":
+        return moveRight(board)
+
+
+def checkGameStatus(board, max_tile=2048):
+    """
+    Update the game status by checking if the max. tile has been obtained.
+
+    Parameters:
+        board (list): game board
+        max_tile (int): tile number required to win, default = 2048
+    Returns:
+        (str): game status WIN/LOSE/PLAY
+    """
+    flat_board = [cell for row in board for cell in row]
+    if max_tile in flat_board:
+        # game has been won if max_tile value is found
+        return "WIN"
+
+    for i in range(4):
+        for j in range(4):
+            # check if a merge is possible
+            if j != 3 and board[i][j] == board[i][j+1] or \
+                    i != 3 and board[i][j] == board[i + 1][j]:
+                return "PLAY"
+
+    if 0 not in flat_board:
+        return "LOSE"
     else:
-        board[a][b] = random.choice([2,4])
+        return "PLAY"
+
+
+def fillTwoOrFour(board, iter=1):
+    """
+    Randomly fill 2 or 4 in available spaces on the board.
+
+    Parameters:
+        board (list): game board
+        iter (int): number of times to repeat the process
+    Returns:
+        board (list): updated game board
+    """
+    for _ in range(iter):
+        a = random.randint(0, 3)
+        b = random.randint(0, 3)
+        while(board[a][b] != 0):
+            a = random.randint(0, 3)
+            b = random.randint(0, 3)
+
+        if sum([cell for row in board for cell in row]) in (0, 2):
+            board[a][b] = 2
+        else:
+            board[a][b] = random.choice((2, 4))
     return board
 
-def move_left(board):
+
+def moveLeft(board):
+    """
+    Move and merge tiles to the left.
+
+    Parameters:
+        board (list): game board
+    Returns:
+        board (list): updated game board
+    """
+    # initial shift
+    shiftLeft(board)
+
+    # merge cells
     for i in range(4):
-        board[i] = slide(board[i])
-        board[i] = merge(board[i])
-        board[i] = slide(board[i])
+        for j in range(3):
+            if board[i][j] == board[i][j + 1] and board[i][j] != 0:
+                board[i][j] *= 2
+                board[i][j + 1] = 0
+                j = 0
+
+    # final shift
+    shiftLeft(board)
     return board
 
-def slide(row):
-    return [i for i in row if i != 0] + [0]*row.count(0)
 
-def merge(row):
-    for i in range(3):
-        if row[i] == row[i+1]:
-            row[i] *= 2
-            row[i+1] = 0
-    return row
+def moveUp(board):
+    """
+    Move ane merge tiles upwards.
 
-def transpose(board):
-    return [list(row) for row in zip(*board)]
+    Parameters:
+        board (list): game board
+    Returns:
+        board (list): updated game board
+    """
+    board = rotateLeft(board)
+    board = moveLeft(board)
+    board = rotateRight(board)
+    return board
 
-def move_up(board):
-    board = transpose(board)
-    board = move_left(board)
-    return transpose(board)
 
-def move_down(board):
-    board = transpose(board)
-    board = move_right(board)
-    return transpose(board)
+def moveRight(board):
+    """
+    Move and merge tiles to the right.
 
-def move_right(board):
-    board = [row[::-1] for row in board]
-    board = move_left(board)
-    return [row[::-1] for row in board]
+    Parameters:
+        board (list): game board
+    Returns:
+        board (list): updated game board
+    """
+    # initial shift
+    shiftRight(board)
 
+    # merge cells
+    for i in range(4):
+        for j in range(3, 0, -1):
+            if board[i][j] == board[i][j - 1] and board[i][j] != 0:
+                board[i][j] *= 2
+                board[i][j - 1] = 0
+                j = 0
+
+    # final shift
+    shiftRight(board)
+    return board
+
+
+def moveDown(board):
+    """
+    Move and merge tiles downwards.
+
+    Parameters:
+        board (list): game board
+    Returns:
+        board (list): updated game board
+    """
+    board = rotateLeft(board)
+    board = moveLeft(board)
+    shiftRight(board)
+    board = rotateRight(board)
+    return board
+
+
+def shiftLeft(board):
+    """
+    Perform tile shift to the left.
+
+    Parameters:
+        board (list): game board
+    """
+    # remove 0's in between numbers
+    for i in range(4):
+        nums, count = [], 0
+        for j in range(4):
+            if board[i][j] != 0:
+                nums.append(board[i][j])
+                count += 1
+        board[i] = nums
+        board[i].extend([0] * (4 - count))
+
+
+def shiftRight(board):
+    """
+    Perform tile shift to the right.
+
+    Parameters:
+        board (list): game board
+    """
+    # remove 0's in between numbers
+    for i in range(4):
+        nums, count = [], 0
+        for j in range(4):
+            if board[i][j] != 0:
+                nums.append(board[i][j])
+                count += 1
+        board[i] = [0] * (4 - count)
+        board[i].extend(nums)
+
+
+def rotateLeft(board):
+    """
+    90 degree counter-clockwise rotation.
+
+    Parameters:
+        board (list): game board
+    Returns:
+        b (list): new game board after rotation
+    """
+    b = [[board[j][i] for j in range(4)] for i in range(3, -1, -1)]
+    return b
+
+
+def rotateRight(board):
+    """
+    270 degree counter-clockwise rotation.
+
+    Parameters:
+        board (list): game board
+    Returns:
+        (list): new game board after rotation
+    """
+    b = rotateLeft(board)
+    b = rotateLeft(b)
+    return rotateLeft(b)

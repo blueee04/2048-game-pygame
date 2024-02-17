@@ -1,113 +1,152 @@
-import json,sys,time,pygame
+import json
+import sys
+
+import pygame
 from pygame.locals import *
-from gamed import *
 
-white = (255,255,255)
-black = (0,0,0) 
+from gamed import playGame
 
-class buttons():
-    def __init__(self, x, y, width, height, colour, text=""):
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+
+
+class Button():
+    """
+    Class to create a new button in pygame window.
+    """
+    # initialise the button
+    def __init__(self, colour, x, y, width, height, text=""):
         self.colour = colour
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.text = text
-    def draw(self, win, text, font):
-        drawRoundRect(win, self.colour, (self.x, self.y, self.width, self.height))
+
+    # draw the button on the screen
+    def draw(self, win, text_col, font):
+        rect = (self.x, self.y, self.width, self.height)
+        drawRoundRect(win, self.colour, rect, 0.4)
+
         if self.text != "":
-            text = font.render(self.text, True, (255, 255, 255))
-            win.blit(text, (self.x+self.width//2-text.get_width()//2, self.y+self.height//2-text.get_height()//2))
-    
+            text = font.render(self.text, 1, text_col)
+            win.blit(text, (self.x + (self.width/2 - text.get_width()/2),
+                            self.y + (self.height/2 - text.get_height()/2)))
+
+    # check if the mouse is positioned over the button
     def isOver(self, pos):
+        # pos is the mouse position or a tuple of (x,y) coordinates
         if pos[0] > self.x and pos[0] < self.x + self.width:
             if pos[1] > self.y and pos[1] < self.y + self.height:
                 return True
+
         return False
 
-def drawRoundRect(win, colour, rect, rad=10):
+
+def drawRoundRect(surface, colour, rect, radius=0.4):
+    """
+    Draw an antialiased rounded filled rectangle on screen
+
+    Parameters:
+        surface (pygame.Surface): destination
+        colour (tuple): RGB values for rectangle fill colour
+        radius (float): 0 <= radius <= 1
+    """
+
     rect = Rect(rect)
-    color = pygame.Color(*colour)
-    alpha = color.a
-    color.a = 0
+    colour = Color(*colour)
+    alpha = colour.a
     pos = rect.topleft
-    rect.topleft = 0,0
-    rectangle = pygame.Surface(rect.size,SRCALPHA)
+    rect.topleft = 0, 0
+    rectangle = pygame.Surface(rect.size, SRCALPHA)
 
-    circle = pygame.Surface([rad*2]*2,SRCALPHA)
-    pygame.draw.ellipse(circle,(0,0,0),circle.get_rect(),0)
-    circle = pygame.transform.smoothscale(circle,[rad]*2)
+    circle = pygame.Surface([min(rect.size) * 3] * 2, SRCALPHA)
+    pygame.draw.ellipse(circle, BLACK, circle.get_rect(), 0)
+    circle = pygame.transform.smoothscale(
+        circle, [int(min(rect.size)*radius)]*2)
 
-    radius = rectangle.blit(circle,(0,0))
+    radius = rectangle.blit(circle, (0, 0))
     radius.bottomright = rect.bottomright
-    rectangle.blit(circle,rect.topright)
-    rectangle.blit(circle,rect.bottomleft)
-    rectangle.fill((0,0,0),rect.inflate(-rad,0))
-    rectangle.fill((0,0,0),rect.inflate(0,-rad))
+    rectangle.blit(circle, radius)
+    radius.topright = rect.topright
+    rectangle.blit(circle, radius)
+    radius.bottomleft = rect.bottomleft
+    rectangle.blit(circle, radius)
 
-    rectangle.fill((0,0,0),rect.inflate(-rad,-rad))
-    rectangle.fill(colour,special_flags=BLEND_RGBA_MIN)
-    rectangle.fill((255,255,255,alpha),special_flags=BLEND_RGBA_MAX)
-    return win.blit(rectangle,pos)
+    rectangle.fill(BLACK, rect.inflate(-radius.w, 0))
+    rectangle.fill(BLACK, rect.inflate(0, -radius.h))
 
-def ShowMenu():
-    light_theme = buttons(50, 50, 200, 50, "Light Theme", (255, 255, 255))
-    dark_theme = buttons(50, 150, 200, 50, "Dark Theme", (0, 0, 0))
-    theme = ""
-    theme_selected = False  
+    rectangle.fill(colour, special_flags=BLEND_RGBA_MAX)
+    rectangle.fill((255, 255, 255, alpha), special_flags=BLEND_RGBA_MIN)
+
+    surface.blit(rectangle, pos)
+
+
+def showMenu():
+    """
+    Display the start screen
+    """
+    # create light theme button
+    light_theme = Button(
+        tuple(c["colour"]["light"]["2048"]), 200-70, 275, 45, 45, "light")
+    # create dark theme button
+    dark_theme = Button(
+        tuple(c["colour"]["dark"]["2048"]), 270-70, 275, 45, 45, "dark")
     
-    _2048 = buttons(50, 250, 200, 50, "2048", (255, 255, 255))
-    _1024 = buttons(50, 350, 200, 50, "1024", (255, 255, 255))
-    _512 = buttons(50, 450, 200, 50, "512", (255, 255, 255))
-    _256 = buttons(50, 550, 200, 50, "256", (255, 255, 255))
+    # initialise theme
+    theme = ""
+    theme_selected = False
+    
+    # create difficulty buttons
+    _2048 = Button(tuple(c["colour"]["light"]["64"]),
+                  130, 330, 45, 45, "2048")
+    _1024 = Button(tuple(c["colour"]["light"]["2048"]),
+                  200, 330, 45, 45, "1024")
+    _512 = Button(tuple(c["colour"]["light"]["2048"]),
+                  270, 330, 45, 45, "512")
+    _256 = Button(tuple(c["colour"]["light"]["2048"]),
+                  340, 330, 45, 45, "256")
 
+    # default difficulty
     difficulty = 0
     diff_selected = False
     
     # create play button
-    play = buttons(tuple(c["colour"]["light"]["2048"]),
+    play = Button(tuple(c["colour"]["light"]["2048"]),
                   235, 400, 45, 45, "play")
+
+    # pygame loop for start screen
     while True:
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == MOUSEBUTTONDOWN:
-                pos = pygame.mouse.get_pos()
-                if light_theme.isOver(pos):
-                    theme = "light"
-                    theme_selected = True
-                if dark_theme.isOver(pos):
-                    theme = "dark"
-                    theme_selected = True
-                if _2048.isOver(pos):
-                    difficulty = 2048
-                    diff_selected = True
-                if _1024.isOver(pos):
-                    difficulty = 1024
-                    diff_selected = True
-                if _512.isOver(pos):
-                    difficulty = 512
-                    diff_selected = True
-                if _256.isOver(pos):
-                    difficulty = 256
-                    diff_selected = True
-                if play.isOver(pos) and theme_selected and diff_selected:
-                    return theme, difficulty
-        light_theme.draw(screen, font)
-        dark_theme.draw(screen, font)
-        _2048.draw(screen, font)
-        _1024.draw(screen, font)
-        _512.draw(screen, font)
-        _256.draw(screen, font)
-        play.draw(screen, font)
+        screen.fill(BLACK)
+
+        screen.blit(pygame.transform.scale(
+            pygame.image.load("images/icon.ico"), (200, 200)), (155, 50))
+
+        font = pygame.font.SysFont(c["font"], 15, bold=True)
+
+        theme_text = font.render("Theme: ", 1, WHITE)
+        screen.blit(theme_text, (55, 285))
+
+        diff_text = font.render("Difficulty: ", 1, WHITE)
+        screen.blit(diff_text, (40, 345))
+
+        # set fonts for buttons
+        font1 = pygame.font.SysFont(c["font"], 15, bold=True)
+        font2 = pygame.font.SysFont(c["font"], 14, bold=True)
+
+        # draw all buttons on the screen
+        light_theme.draw(screen, BLACK, font1)
+        dark_theme.draw(screen, (197, 255, 215), font1)
+        _2048.draw(screen, BLACK, font2)
+        _1024.draw(screen, BLACK, font2)
+        _512.draw(screen, BLACK, font2)
+        _256.draw(screen, BLACK, font2)
+        play.draw(screen, BLACK, font1)
+
         pygame.display.update()
-        import pygame.time
-
-        clock = pygame.time.Clock()
-        clock.tick(60)
 
         for event in pygame.event.get():
+            # store mouse position (coordinates)
             pos = pygame.mouse.get_pos()
 
             if event.type == QUIT or \
@@ -165,10 +204,6 @@ def ShowMenu():
                     diff_selected = True
 
                 # play game with selected theme
-                def playGame(theme, difficulty):
-                    # Add the implementation of the playGame function here
-                    pass
-
                 if play.isOver(pos):
                     if theme != "" and difficulty != 0:
                         playGame(theme, difficulty)
@@ -241,16 +276,14 @@ if __name__ == "__main__":
     # set up pygame
     pygame.init()
     # set up screen
-    def showMenu():
-        # implementation of the showMenu function
-        
-        screen = pygame.display.set_mode((c["size"], c["size"]))
-        pygame.display.set_caption("2048 by Rajit Banerjee")
+    screen = pygame.display.set_mode(
+        (c["size"], c["size"]))
+    pygame.display.set_caption("2048")
 
-        # display game icon in window
-        icon = pygame.transform.scale(
-            pygame.image.load("images/icon.ico"), (32, 32))
-        pygame.display.set_icon(icon)
+    # display game icon in window
+    icon = pygame.transform.scale(
+        pygame.image.load("images/icon.ico"), (32, 32))
+    pygame.display.set_icon(icon)
 
     # set font according to json data specifications
     my_font = pygame.font.SysFont(c["font"], c["fontSize"], bold=True)
